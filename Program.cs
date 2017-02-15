@@ -5,6 +5,8 @@ using System.Linq;
 using Trustpilot;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace ConsoleApplication
 {
@@ -20,13 +22,22 @@ namespace ConsoleApplication
       if (args.Length != 2) Console.WriteLine("usage: dotnet run min_word_length max_word_count");
       var minWordLength = int.Parse(args[0]);
       var maxWordCount = int.Parse(args[1]);
-      var wordlist = LoadWordlist(minWordLength);
       var map = new CharacterCountMap(searchText);
-      foreach(var anagram in Anagrams.Find(wordlist, map, maxWordCount))
+      var wordlist = LoadWordlist(minWordLength, map);
+      //foreach(var anagram in Anagrams.Find(wordlist, map, maxWordCount))
+      Parallel.ForEach(wordlist, x =>
       {
-        Console.WriteLine(anagram);
-        CheckForMatch(anagram);
-      }
+        Console.WriteLine("Processing subtree for {0}", x);
+        foreach(var anagram in Anagrams.Find(
+          wordlist.Where(y => y!=x), 
+          map.Subtract(x),
+          maxWordCount - 1))
+        {
+          var final = x + " " + anagram;
+          Console.WriteLine(final);
+          CheckForMatch(final);
+        }
+      });
     }
 
     public static void CheckForMatch(string anagram){
@@ -68,12 +79,17 @@ namespace ConsoleApplication
       return sBuilder.ToString();
     }
 
-    public static IEnumerable<string> LoadWordlist(int minWordLength)
+    public static IEnumerable<string> LoadWordlist(int minWordLength, CharacterCountMap map)
     {
       var lines = File.ReadAllLines("wordlist2").Distinct();
       Console.WriteLine("Original wordlist has {0} unique elements.", lines.Count());
-      var filtered = lines.Where(x => x.Length >= minWordLength);
-      Console.WriteLine("There are {0} elements >= {1} letters long.", filtered.Count(), minWordLength);
+      var filtered = lines
+        .Where(x => x.Length >= minWordLength)
+        .Where(x => map.Subtract(x) != null);
+      Console.WriteLine(
+        "There are {0} elements >= {1} letters long, that are contained in the map.",
+        filtered.Count(),
+        minWordLength);
       return filtered;
     }
   }

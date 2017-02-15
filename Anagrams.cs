@@ -20,7 +20,7 @@ namespace Trustpilot
           else if (maxWordCount > 0)
           {
             var nextWordlist = wordlist.Where(x => x != word);
-            foreach(var s in Find(nextWordlist, wordmap, maxWordCount-1))
+            foreach(var s in Find(nextWordlist, wordmap, maxWordCount - 1))
             {
               yield return word + " " + s;
             }
